@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Zakupy - Wspólna Lista & Gazetki</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 font-sans p-4 min-h-screen">
+
+  <div class="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden p-5 space-y-5">
+    
+    <!-- NAGŁÓWEK -->
+    <div class="flex justify-between items-center pb-3 border-b gap-2">
+      <div>
+        <h1 class="text-lg font-bold text-gray-800 leading-tight">🛒 Smart Zakupy</h1>
+        <p class="text-[11px] text-green-600 font-semibold flex items-center gap-1 mt-0.5">
+          <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Live Sync Supabase
+        </p>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button onclick="toggleListManager()" class="h-9 px-3 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl border border-blue-200 flex items-center gap-1 shadow-sm transition">
+          📋 Lista
+        </button>
+
+        <button onclick="shareOnWhatsApp()" class="h-9 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs rounded-xl font-bold shadow flex items-center gap-1 transition">
+          📱 WhatsApp
+        </button>
+      </div>
+    </div>
+
+    <!-- MANAGER MOICH ZAPISANYCH LIST -->
+    <div id="listManager" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">💾 Twoje Zapisane Listy</h3>
+        <button onclick="toggleListManager()" class="text-xs text-slate-400 hover:text-slate-600 font-bold">✕ Zamknij</button>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="newListNameInput" placeholder="Nazwa nowej listy (np. Grill)" class="flex-1 bg-white border rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500">
+        <button onclick="createNewList()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm">
+          + Utwórz
+        </button>
+      </div>
+      <div id="savedListsContainer" class="flex flex-col gap-1.5 pt-1"></div>
+    </div>
+
+    <!-- SEKCJA: GAZETKI PROMOCYJNE -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-3 shadow-sm">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1">
+          📰 Gazetki Promocyjne
+        </h2>
+        <span class="text-[10px] bg-blue-200 text-blue-800 font-bold px-1.5 py-0.5 rounded">Aktualne Ofertówki</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <a href="https://www.lidl.pl/c/nasze-gazetki/s10008614" target="_blank" rel="noopener" class="bg-white p-2.5 rounded-lg border hover:border-blue-400 flex items-center justify-between font-semibold text-gray-700 shadow-sm transition">
+          <span>🔴 Lidl</span>
+          <span class="text-blue-600 font-bold text-[10px]">Gazetka PDF ↗</span>
+        </a>
+        <a href="https://www.biedronka.pl/pl/gazetki" target="_blank" rel="noopener" class="bg-white p-2.5 rounded-lg border hover:border-blue-400 flex items-center justify-between font-semibold text-gray-700 shadow-sm transition">
+          <span>🐞 Biedronka</span>
+          <span class="text-blue-600 font-bold text-[10px]">Gazetka PDF ↗</span>
+        </a>
+        <a href="https://www.rossmann.pl/gazetka" target="_blank" rel="noopener" class="bg-white p-2.5 rounded-lg border hover:border-blue-400 flex items-center justify-between font-semibold text-gray-700 shadow-sm transition">
+          <span>💄 Rossmann</span>
+          <span class="text-blue-600 font-bold text-[10px]">Gazetka PDF ↗</span>
+        </a>
+        <a href="https://www.zabka.pl/gazetka-promocyjna" target="_blank" rel="noopener" class="bg-white p-2.5 rounded-lg border hover:border-blue-400 flex items-center justify-between font-semibold text-gray-700 shadow-sm transition">
+          <span>🐸 Żabka</span>
+          <span class="text-blue-600 font-bold text-[10px]">Gazetka PDF ↗</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- FORMULARZ DODAWANIA -->
+    <div class="space-y-2 relative">
+      <div class="flex gap-2">
+        <select id="shopSelect" onchange="searchProducts()" class="w-1/3 bg-gray-50 border rounded-xl px-2 py-2.5 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="lidl">🔴 Lidl</option>
+          <option value="biedronka">🐞 Biedronka</option>
+          <option value="rossmann">💄 Rossmann</option>
+          <option value="zabka">🐸 Żabka</option>
+        </select>
+        <div class="relative w-2/3">
+          <input type="text" id="itemName" oninput="searchProducts()" placeholder="Wpisz np. płatki, chleb, mleko..." autocomplete="off" class="w-full bg-gray-50 border rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+          
+          <!-- DROPDOWN Z SUGESTIAMI -->
+          <div id="suggestions" class="hidden absolute left-0 right-0 top-11 bg-white border rounded-xl shadow-2xl z-50 max-h-56 overflow-y-auto divide-y"></div>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <input type="number" id="itemPrice" step="0.01" placeholder="Cena (zł)" class="w-1/3 bg-gray-50 border rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+        <button onclick="addItem()" class="w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-2.5 text-xs shadow transition active:scale-[0.98]">
+          + Dodaj do listy
+        </button>
+      </div>
+    </div>
+
+    <!-- LISTA ZAKUPÓW Z PODZIAŁEM NA SKLEPY -->
+    <div id="shoppingList" class="space-y-4 pt-2">
+      <p class="text-center text-gray-400 text-sm py-4">Ładowanie listy...</p>
+    </div>
+
+    <!-- PODSUMOWANIE -->
+    <div class="pt-4 border-t space-y-3">
+      <div class="flex justify-between items-center">
+        <span class="text-gray-500 text-sm font-medium">Razem do zapłaty:</span>
+        <span id="totalSum" class="text-2xl font-black text-gray-900">0.00 zł</span>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="copyListLink()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-2.5 rounded-xl font-bold border flex justify-center items-center gap-1 transition">
+          🔗 Udostępnij link
+        </button>
+        <button onclick="downloadListTxt()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-2.5 rounded-xl font-bold border flex justify-center items-center gap-1 transition">
+          💾 Zapisz do pliku
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://skkthhfvkwyrzjhkdwtc.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_bKzTnL_EzNJTweOwfSDG7A_UTlYBqka";
+    
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const LIST_ID = urlParams.get('list') || 'moja-lista-domowa';
+
+    let items = [];
+    let currentSuggestions = [];
+
+    async function init() {
+      renderSavedLists();
+      await fetchItems();
+
+      db.channel(`list-${LIST_ID}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'list_items', filter: `list_id=eq.${LIST_ID}` }, () => {
+          fetchItems();
+        })
+        .subscribe();
+    }
+
+    async function fetchItems() {
+      const { data, error } = await db.from('list_items').select('*').eq('list_id', LIST_ID).order('created_at', { ascending: true });
+      if (!error) {
+        items = data;
+        renderList();
+      }
+    }
+
+    async function searchProducts() {
+      const query = document.getElementById('itemName').value.trim().toLowerCase();
+      const shop_id = document.getElementById('shopSelect').value.toLowerCase();
+      const suggestionsBox = document.getElementById('suggestions');
+
+      if (query.length < 2) {
+        suggestionsBox.classList.add('hidden');
+        return;
+      }
+
+      const { data, error } = await db
+        .from('products')
+        .select('*')
+        .eq('shop_id', shop_id)
+        .ilike('title', `%${query}%`)
+        .limit(30);
+
+      if (error || !data || data.length === 0) {
+        suggestionsBox.classList.add('hidden');
+        return;
+      }
+
+      currentSuggestions = data.sort((a, b) => {
+        const aStarts = a.title.toLowerCase().startsWith(query);
+        const bStarts = b.title.toLowerCase().startsWith(query);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return 0;
+      });
+
+      suggestionsBox.innerHTML = currentSuggestions.map((p, idx) => `
+        <div onclick="selectProductByIndex(${idx})" class="p-2.5 hover:bg-blue-50 cursor-pointer flex justify-between items-center text-xs transition">
+          <div>
+            <span class="font-semibold text-gray-800 block">${p.title}</span>
+            ${p.is_promo ? '<span class="inline-block mt-0.5 bg-red-100 text-red-600 font-bold px-1 py-0.2 text-[9px] rounded">PROMOCJA</span>' : ''}
+          </div>
+          <span class="font-bold text-blue-600 text-xs">${(p.price_promo || p.price_regular).toFixed(2)} zł</span>
+        </div>
+      `).join('');
+
+      suggestionsBox.classList.remove('hidden');
+    }
+
+    function selectProductByIndex(index) {
+      const p = currentSuggestions[index];
+      if (!p) return;
+
+      document.getElementById('itemName').value = p.title;
+      document.getElementById('itemPrice').value = p.price_promo || p.price_regular;
+      document.getElementById('suggestions').classList.add('hidden');
+    }
+
+    async function addItem() {
+      const shop_id = document.getElementById('shopSelect').value.toLowerCase();
+      const product_name = document.getElementById('itemName').value.trim();
+      const price = parseFloat(document.getElementById('itemPrice').value) || 0;
+
+      if (!product_name) return;
+
+      const { error } = await db.from('list_items').insert([{ 
+        list_id: LIST_ID, 
+        shop_id, 
+        product_name, 
+        price 
+      }]);
+
+      if (!error) {
+        document.getElementById('itemName').value = '';
+        document.getElementById('itemPrice').value = '';
+        document.getElementById('suggestions').classList.add('hidden');
+        await fetchItems();
+      } else {
+        console.error("Błąd podczas dodawania:", error);
+      }
+    }
+
+    async function toggleComplete(id, current) {
+      await db.from('list_items').update({ is_completed: !current }).eq('id', id);
+    }
+
+    async function deleteItem(id) {
+      await db.from('list_items').delete().eq('id', id);
+    }
+
+    function renderList() {
+      const container = document.getElementById('shoppingList');
+      if (items.length === 0) {
+        container.innerHTML = `<p class="text-center text-gray-400 text-sm py-4">Lista jest pusta. Wybierz sklep i dodaj pierwszy produkt!</p>`;
+        document.getElementById('totalSum').innerText = '0.00 zł';
+        return;
+      }
+
+      const grouped = {};
+      let total = 0;
+
+      items.forEach(item => {
+        if (!grouped[item.shop_id]) grouped[item.shop_id] = [];
+        grouped[item.shop_id].push(item);
+        
+        if (!item.is_completed) {
+          total += (item.price * (item.quantity || 1));
+        }
+      });
+
+      const shopNames = { lidl: '🔴 Lidl', biedronka: '🐞 Biedronka', rossmann: '💄 Rossmann', zabka: '🐸 Żabka' };
+
+      let html = '';
+      for (const [shop, shopItems] of Object.entries(grouped)) {
+        html += `
+          <div class="border rounded-xl p-3 bg-gray-50 shadow-sm">
+            <div class="flex justify-between items-center mb-2 border-b pb-1">
+              <h3 class="font-bold text-xs uppercase tracking-wider text-gray-700">${shopNames[shop] || shop}</h3>
+              <span class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">${shopItems.length} szt.</span>
+            </div>
+            <div class="space-y-2">
+              ${shopItems.map(item => `
+                <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border shadow-sm ${item.is_completed ? 'opacity-50 line-through bg-gray-50' : ''}">
+                  <div class="flex items-center gap-2 cursor-pointer flex-1" onclick="toggleComplete('${item.id}',${item.is_completed})">
+                    <input type="checkbox" ${item.is_completed ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 cursor-pointer">
+                    <span class="text-sm font-medium text-gray-800">${item.product_name}</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold text-gray-800 block">${item.price > 0 ? item.price.toFixed(2) + ' zł' : ''}</span>
+                    <button onclick="deleteItem('${item.id}')" class="text-red-400 hover:text-red-600 text-xs px-1 font-bold">✕</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+      document.getElementById('totalSum').innerText = `${total.toFixed(2)} zł`;
+    }
+
+    function toggleListManager() {
+      document.getElementById('listManager').classList.toggle('hidden');
+    }
+
+    function saveListToLocalHistory(listName) {
+      let saved = JSON.parse(localStorage.getItem('smart_zakupy_lists') || '[]');
+      if (!saved.includes(listName)) {
+        saved.push(listName);
+        localStorage.setItem('smart_zakupy_lists', JSON.stringify(saved));
+      }
+    }
+
+    function shareListLink(listName, event) {
+      if (event) event.stopPropagation();
+      const url = new URL(window.location.href);
+      url.searchParams.set('list', listName);
+      navigator.clipboard.writeText(url.toString());
+      alert(`🔗 Link do listy "${listName}" został skopiowany do schowka!`);
+    }
+
+    async function editList(oldName, event) {
+      if (event) event.stopPropagation();
+
+      const input = prompt(`Wpisz nową nazwę dla listy "${oldName}":`, oldName);
+      if (!input) return;
+
+      const newName = input.toLowerCase().replace(/\s+/g, '-').trim();
+      if (!newName || newName === oldName) return;
+
+      await db.from('list_items').update({ list_id: newName }).eq('list_id', oldName);
+
+      let saved = JSON.parse(localStorage.getItem('smart_zakupy_lists') || '[]');
+      saved = saved.map(l => l === oldName ? newName : l);
+      localStorage.setItem('smart_zakupy_lists', JSON.stringify(saved));
+
+      if (LIST_ID === oldName) {
+        window.location.search = `?list=${newName}`;
+      } else {
+        renderSavedLists();
+      }
+    }
+
+    async function deleteList(listName, event) {
+      if (event) event.stopPropagation();
+
+      if (!confirm(`Czy na pewno chcesz usunąć listę "${listName}" wraz ze wszystkimi jej produktami?`)) {
+        return;
+      }
+
+      await db.from('list_items').delete().eq('list_id', listName);
+
+      let saved = JSON.parse(localStorage.getItem('smart_zakupy_lists') || '[]');
+      saved = saved.filter(l => l !== listName);
+      localStorage.setItem('smart_zakupy_lists', JSON.stringify(saved));
+
+      if (LIST_ID === listName) {
+        const nextList = saved.length > 0 ? saved[0] : 'moja-lista-domowa';
+        window.location.search = `?list=${nextList}`;
+      } else {
+        renderSavedLists();
+      }
+    }
+
+    function createNewList() {
+      const input = document.getElementById('newListNameInput').value.trim();
+      if (input) {
+        const clean = input.toLowerCase().replace(/\s+/g, '-');
+        saveListToLocalHistory(clean);
+        window.location.search = `?list=${clean}`;
+      }
+    }
+
+    function renderSavedLists() {
+      const saved = JSON.parse(localStorage.getItem('smart_zakupy_lists') || '[]');
+      const container = document.getElementById('savedListsContainer');
+      
+      if (saved.length === 0) {
+        container.innerHTML = `<span class="text-xs text-gray-400 italic">Brak zapisanych list. Wpisz nazwę wyżej i kliknij Utwórz!</span>`;
+        return;
+      }
+
+      container.innerHTML = saved.map(l => `
+        <div class="flex items-center justify-between p-2 rounded-xl border text-xs font-semibold shadow-sm ${l === LIST_ID ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'}">
+          <a href="?list=${l}" class="flex items-center gap-1.5 flex-1 truncate pr-2">
+            📋 <span class="truncate">${l}</span>
+          </a>
+          <div class="flex items-center gap-1">
+            <button onclick="shareListLink('${l}', event)" class="p-1 hover:bg-black/10 rounded transition" title="Udostępnij link">
+              🔗
+            </button>
+            <button onclick="editList('${l}', event)" class="p-1 hover:bg-black/10 rounded transition" title="Edytuj nazwę">
+              ✏️
+            </button>
+            <button onclick="deleteList('${l}', event)" class="p-1 hover:bg-red-500 hover:text-white rounded transition" title="Usuń listę">
+              ✕
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function copyListLink() {
+      navigator.clipboard.writeText(window.location.href);
+      alert(" Link do Twojej aktywnej listy został skopiowany do schowka!");
+    }
+
+    function downloadListTxt() {
+      let content = `LISTA ZAKUPÓW: ${LIST_ID.toUpperCase()}\n`;
+      content += `=====================================\n\n`;
+      items.forEach(i => {
+        content += `[${i.is_completed ? 'X' : ' '}] ${i.product_name} (${i.shop_id.toUpperCase()}) - ${i.price.toFixed(2)} zł\n`;
+      });
+      
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `lista-${LIST_ID}.txt`;
+      a.click();
+    }
+
+    function shareOnWhatsApp() {
+      let text = `🛒 *Moja lista zakupów ("${LIST_ID}"):*\n\n`;
+      items.forEach(i => {
+        text += `${i.is_completed ? '✅' : '⬜'} ${i.product_name} (${i.shop_id.toUpperCase()})\n`;
+      });
+      text += `\n🔗 *Dołącz do edycji na żywo:* ${window.location.href}`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    init();
+  </script>
+</body>
+</html>
